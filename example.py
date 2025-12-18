@@ -16,12 +16,15 @@ envmap = EnvMap(torch.tensor(
     dtype=torch.float32, device='cuda'
 ))
 
-# 2. Load Pipeline
-pipeline = Trellis2ImageTo3DPipeline.from_pretrained("microsoft/TRELLIS.2-4B")
+# 2. Load Pipeline（如已手动下载 DINOv3，指定本地路径避免访问 HF gated repo）
+pipeline = Trellis2ImageTo3DPipeline.from_pretrained(
+    "microsoft/TRELLIS.2-4B",
+    dino_local_path="./pretrained_weights/dinov3-vitl16-pretrain-lvd1689m/facebook/dinov3-vitl16-pretrain-lvd1689m"
+)
 pipeline.cuda()
 
 # 3. Load Image & Run
-image = Image.open("assets/example_image/T.png")
+image = Image.open("assets/example_image/image_01.png")
 mesh = pipeline.run(image)[0]
 mesh.simplify(16777216) # nvdiffrast limit
 

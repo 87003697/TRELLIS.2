@@ -68,7 +68,7 @@ class Trellis2ImageTo3DPipeline(Pipeline):
         self._device = 'cpu'
 
     @staticmethod
-    def from_pretrained(path: str) -> "Trellis2ImageTo3DPipeline":
+    def from_pretrained(path: str, dino_local_path: Optional[str] = None) -> "Trellis2ImageTo3DPipeline":
         """
         Load a pretrained model.
 
@@ -92,7 +92,12 @@ class Trellis2ImageTo3DPipeline(Pipeline):
         new_pipeline.shape_slat_normalization = args['shape_slat_normalization']
         new_pipeline.tex_slat_normalization = args['tex_slat_normalization']
 
-        new_pipeline.image_cond_model = getattr(image_feature_extractor, args['image_cond_model']['name'])(**args['image_cond_model']['args'])
+        if dino_local_path:
+            args['image_cond_model']['args']['model_name'] = dino_local_path
+
+        img_model_name = args['image_cond_model']['name']
+        assert img_model_name == "DinoV3FeatureExtractor", f"image_cond_model 仅支持 DinoV3FeatureExtractor，收到 {img_model_name}"
+        new_pipeline.image_cond_model = image_feature_extractor.DinoV3FeatureExtractor(**args['image_cond_model']['args'])
         new_pipeline.rembg_model = getattr(rembg, args['rembg_model']['name'])(**args['rembg_model']['args'])
         
         new_pipeline.low_vram = args.get('low_vram', True)
