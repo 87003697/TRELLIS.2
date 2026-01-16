@@ -31,8 +31,9 @@
  *  - Tensor of shape (C, H, W) containing the output color
  *  - Tensor of shape (H, W) containing the output depth
  *  - Tensor of shape (H, W) containing the output alpha
+ *  - Tensor of shape (H, W) containing the voxel indices (-1 for background)
  */
-std::tuple<torch::Tensor, torch::Tensor, torch::Tensor>
+std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
 rasterize_voxels_cuda(
     const torch::Tensor& positions,
     const torch::Tensor& attrs,

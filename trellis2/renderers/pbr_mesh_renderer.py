@@ -173,8 +173,13 @@ def aces_tonemapping(x: torch.Tensor) -> torch.Tensor:
     d = 0.59
     e = 0.14
     
+    # ★ 确保输入非负，防止分母为 0 或负值导致 NaN
+    x = torch.clamp(x, min=0.0)
+    
     # Apply the ACES fitted curve
-    mapped = (x * (a * x + b)) / (x * (c * x + d) + e)
+    # 添加 eps 防止极端情况下分母过小
+    eps = 1e-6
+    mapped = (x * (a * x + b)) / (x * (c * x + d) + e + eps)
     
     # Clamp to [0, 1] for display or saving
     return torch.clamp(mapped, 0.0, 1.0)
@@ -485,6 +490,6 @@ class PbrMeshRenderer:
         for k in envmap.keys():
             shaded_key = f"shaded_{k}" if k != '' else "shaded"
             out_dict[shaded_key] = aces_tonemapping(out_dict[shaded_key])
-            out_dict[shaded_key] = gamma_correction(out_dict[shaded_key])
+            # gamma_correction 跳过：避免 x ** (1/2.2) 在 x=0 处梯度为 inf
             
         return out_dict

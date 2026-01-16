@@ -72,6 +72,7 @@ class VoxelRenderer:
                 attr (torch.Tensor): (C, H, W) rendered color
                 depth (torch.Tensor): (H, W) rendered depth
                 alpha (torch.Tensor): (H, W) rendered alpha
+                voxel_id (torch.Tensor): (H, W) int, voxel indices (-1 for background)
         """
         resolution = self.rendering_options["resolution"]
         near = self.rendering_options["near"]
@@ -95,17 +96,20 @@ class VoxelRenderer:
             resolution * ssaa,
             resolution * ssaa,
         )
-        color, depth, alpha = _C.rasterize_voxels_cuda(*args)
+        color, depth, alpha, voxel_id = _C.rasterize_voxels_cuda(*args)  # (C, H, W), (H, W), (H, W), (H, W)
 
         if ssaa > 1:
             color = F.interpolate(color[None], size=(resolution, resolution), mode='bilinear', align_corners=False, antialias=True).squeeze()
             depth = F.interpolate(depth[None, None], size=(resolution, resolution), mode='bilinear', align_corners=False, antialias=True).squeeze()
             alpha = F.interpolate(alpha[None, None], size=(resolution, resolution), mode='bilinear', align_corners=False, antialias=True).squeeze()
+            # voxel_id 是整数索引，必须用 nearest 模式降采样
+            voxel_id = F.interpolate(voxel_id[None, None].float(), size=(resolution, resolution), mode='nearest').squeeze().int()  # (H, W)
             
         ret = edict({
             'attr': color,
             'depth': depth,
             'alpha': alpha,
+            'voxel_id': voxel_id,  # (H, W) int，-1 表示背景
         })
         return ret
     

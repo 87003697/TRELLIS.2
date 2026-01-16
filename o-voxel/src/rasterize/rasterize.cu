@@ -184,7 +184,8 @@ render(
     const float voxel_size,
     float* out_color,
     float* out_depth,
-    float* out_alpha
+    float* out_alpha,
+    int* out_voxel_id
 ) {
     // Identify current tile and associated min/max pixel range.
     auto block = cg::this_thread_block();
@@ -264,6 +265,7 @@ render(
             if (hit >= 0) out_color[ch * H * W + pix_id] = attrs[hit * C + ch];
         out_depth[pix_id] = D;
         out_alpha[pix_id] = hit >= 0 ? 1.0f : 0.0f;
+        out_voxel_id[pix_id] = hit;  // 输出击中的 voxel 索引，-1 表示背景
     }
 }
 
@@ -282,7 +284,8 @@ void forward(
     const float tan_fovy,
     float* out_color,
     float* out_depth,
-    float* out_alpha
+    float* out_alpha,
+    int* out_voxel_id
 ) {
     // Parrallel config (2D grid of 2D blocks)
     dim3 grid((width + BLOCK_X - 1) / BLOCK_X, (height + BLOCK_Y - 1) / BLOCK_Y, 1);
@@ -340,12 +343,12 @@ void forward(
         num_channels, width, height,
         campos, tan_fovx, tan_fovy, viewmatrix,
         positions, attrs, voxel_size,
-        out_color, out_depth, out_alpha
+        out_color, out_depth, out_alpha, out_voxel_id
     );
 }
 
 
-std::tuple<torch::Tensor, torch::Tensor, torch::Tensor>
+std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
 rasterize_voxels_cuda(
     const torch::Tensor& positions,
     const torch::Tensor& attrs,
@@ -366,12 +369,13 @@ rasterize_voxels_cuda(
 
     // Types
     torch::TensorOptions float_opts = torch::TensorOptions().dtype(torch::kFloat32).device(positions.device());
-    torch::TensorOptions byte_opts = torch::TensorOptions().dtype(torch::kUInt8).device(positions.device());
+    torch::TensorOptions int_opts = torch::TensorOptions().dtype(torch::kInt32).device(positions.device());
 
     // Allocate output tensors
     torch::Tensor out_color = torch::zeros({C, H, W}, float_opts);
     torch::Tensor out_depth = torch::zeros({H, W}, float_opts);
     torch::Tensor out_alpha = torch::zeros({H, W}, float_opts);
+    torch::Tensor out_voxel_id = torch::full({H, W}, -1, int_opts);  // 初始化为 -1（背景）
 
     // Call Forward
     if (P > 0) {
@@ -386,11 +390,12 @@ rasterize_voxels_cuda(
             tan_fovx, tan_fovy,
             out_color.contiguous().data_ptr<float>(),
             out_depth.contiguous().data_ptr<float>(),
-            out_alpha.contiguous().data_ptr<float>()
+            out_alpha.contiguous().data_ptr<float>(),
+            out_voxel_id.contiguous().data_ptr<int>()
         );
     }
 
     return std::make_tuple(
-        out_color, out_depth, out_alpha
+        out_color, out_depth, out_alpha, out_voxel_id
     );
 }
