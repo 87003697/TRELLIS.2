@@ -33,6 +33,11 @@ __attributes = {
     'SparseChannel2Spatial': 'spatial',
     'sparse_nearest_interpolate': 'spatial',
     'sparse_trilinear_interpolate': 'spatial',
+    'ChunkMeta': 'spatial',
+    'Chunk': 'spatial',
+    'ChunkableSparseTensor': 'spatial',
+    'MemoryMonitor': 'spatial',
+    'ChunkedDecoderMixin': 'spatial',
     'encode_seq': 'serialize',
     'decode_seq': 'serialize',
 }
